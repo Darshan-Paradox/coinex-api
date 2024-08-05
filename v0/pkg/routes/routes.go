@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	"coinex-api/v0/pkg/handlers"
 	"coinex-api/v0/logger"
+	"coinex-api/v0/pkg/handlers"
 )
 
 type Router struct {

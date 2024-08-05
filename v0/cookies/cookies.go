@@ -1,13 +1,13 @@
 package cookies
 
 import (
-	"os"
-	"fmt"
-	"time"
-	"errors"
-	"strings"
-	"strconv"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,7 +17,7 @@ import (
 var Repository Cookies
 
 type Cookies struct {
-    ctx *gin.Context
+	ctx *gin.Context
 }
 
 func (cookies *Cookies) Init(ctx *gin.Context) {
@@ -58,7 +58,7 @@ func (cookies Cookies) GetAllCoin() (views.CoinList, error) {
 func (cookies Cookies) GetCoin(coinCode string) (views.Coin, error) {
 
 	coinKey := fmt.Sprintf("%s-%s", coinCode, os.Getenv("CURRENCY"))
-	cookie, err := cookies.ctx.Cookie(coinKey+"-name")
+	cookie, err := cookies.ctx.Cookie(coinKey + "-name")
 	if err != nil {
 		fmt.Println("Error: cookie not found", err)
 		return views.Coin{}, err
@@ -70,7 +70,7 @@ func (cookies Cookies) GetCoin(coinCode string) (views.Coin, error) {
 func (cookies Cookies) GetCoinInCurrency(coinCode, currency string) (views.Coin, error) {
 
 	coinKey := fmt.Sprintf("%s-%s", coinCode, currency)
-	cookie, err := cookies.ctx.Cookie(coinKey+"-name")
+	cookie, err := cookies.ctx.Cookie(coinKey + "-name")
 	if err != nil {
 		fmt.Println("Error: cookie not found", err)
 		return views.Coin{}, err
@@ -82,7 +82,7 @@ func (cookies Cookies) GetCoinInCurrency(coinCode, currency string) (views.Coin,
 func (cookies Cookies) GetPriceIn(coinCode, currency string) (views.Price, error) {
 
 	coinKey := fmt.Sprintf("%s-%s", coinCode, currency)
-	cookie, err := cookies.ctx.Cookie(coinKey+"-price")
+	cookie, err := cookies.ctx.Cookie(coinKey + "-price")
 	if err != nil {
 		fmt.Println("Error: cookie not found", err)
 		return views.Price{}, err
@@ -107,7 +107,7 @@ func (cookies Cookies) GetPrice(coinCode string) (views.PriceResponse, error) {
 
 	for _, currency := range currencies {
 		coinKey := fmt.Sprintf("%s-%s", coinCode, currency)
-		cookie, err := cookies.ctx.Cookie(coinKey+"-price")
+		cookie, err := cookies.ctx.Cookie(coinKey + "-price")
 		if err != nil {
 			fmt.Println("Error: cookie not found", err)
 			return views.PriceResponse{}, err
@@ -143,7 +143,7 @@ func (cookies Cookies) SetCoin(coin views.Coin) error {
 		cookies.ctx.SetCookie("coins", coinKey+"-name", int(EXPIRY.Milliseconds()), "/", "localhost", false, true)
 	}
 
-	return nil 
+	return nil
 }
 
 func (cookies Cookies) SetPrice(price views.Price) error {

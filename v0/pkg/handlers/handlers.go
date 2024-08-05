@@ -1,17 +1,17 @@
 package handlers
 
 import (
-	"os"
 	"fmt"
-	"strings"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"coinex-api/v0/cookies"
-	"coinex-api/v0/pkg/views"
-	"coinex-api/v0/pkg/services"
 	"coinex-api/v0/internal/cache"
+	"coinex-api/v0/pkg/services"
+	"coinex-api/v0/pkg/views"
 )
 
 func GetAllCoins(c *gin.Context) {

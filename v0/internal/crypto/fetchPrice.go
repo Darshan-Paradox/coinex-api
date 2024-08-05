@@ -1,12 +1,12 @@
 package crypto
 
 import (
-	"io"
-	"os"
-	"fmt"
-	"strconv"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
 
 	"coinex-api/v0/pkg/views"
 )

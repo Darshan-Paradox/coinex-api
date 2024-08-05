@@ -1,12 +1,12 @@
 package main
 
 import (
-	"os"
 	"context"
+	"os"
 
+	"coinex-api/v0/internal/cache"
 	"coinex-api/v0/logger"
 	"coinex-api/v0/pkg/routes"
-	"coinex-api/v0/internal/cache"
 )
 
 var repo = &cache.Repository

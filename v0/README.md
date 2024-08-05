@@ -9,3 +9,8 @@ PostgreSQL database is used for caching API response to minimise the calls to ex
 - Download the project using `git clone`
 - Run `export $(cat .env | xargs)` to export .env file
 - Run `go run ./src/main` or `go build` to run the server
+
+--OR--
+
+- Download the project using `git clone`
+- Run `zsh build.sh` or `chmod +x build.sh && ./build.sh`

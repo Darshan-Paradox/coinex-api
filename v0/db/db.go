@@ -1,11 +1,11 @@
 package db
 
 import (
-	"os"
-	"fmt"
-	"time"
-	"strings"
 	"context"
+	"fmt"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,10 +13,10 @@ import (
 	"coinex-api/v0/pkg/views"
 )
 
-//Global Repository variable
+// Global Repository variable
 var Repository DB
 
-//Database struct with connection and context
+// Database struct with connection and context
 type DB struct {
 	conn *pgxpool.Pool
 	ctx  context.Context
@@ -181,7 +181,7 @@ func (db DB) SetCoin(coin views.Coin) error {
 			return err
 		}
 	}
-	return nil 
+	return nil
 }
 
 func (db DB) SetPrice(price views.Price) error {
