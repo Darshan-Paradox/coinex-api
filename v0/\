@@ -1,0 +1,165 @@
+package cookies
+
+import (
+	"os"
+	"fmt"
+	"strings"
+	"encoding/json"
+
+	"github.com/gin-gonic/gin"
+
+	"coinex-api/v0/pkg/views"
+)
+
+type Cookies struct {
+    ctx *gin.Context
+}
+
+func (cookies *Cookies) Init(ctx *gin.Context) {
+	cookies.ctx = ctx
+}
+
+func (cookies *Cookies) GetAllCoin() (views.CoinList, error) {
+	coins := make(views.CoinList)
+
+	cookie, err := cookies.ctx.Cookie("coins")
+
+	var coinList map[string]interface{}
+	json.Unmarshal([]byte(cookie), &coins)
+
+	for _, code := range coinList["data"].([]string) {
+		cookie, err = cookies.ctx.Cookie(code)
+		coins[code] = views.Coin{Code: code, Name: cookie}
+	}
+
+	return coins, err
+}
+
+func (cookies *Cookies) GetCoin(coinCode string) (views.Coin, error) {
+
+	var code, name string
+
+	err := cookies.conn.QueryRow(cookies.ctx, "select code, name from coins where code=$1", coinCode).Scan(&code, &name)
+	if err != nil {
+		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
+		return views.Coin{}, err
+	}
+
+	return views.Coin{Code: code, Name: name}, err
+}
+
+func (cookies *Cookies) GetCoinInCurrency(coinCode, currency string) (views.Coin, error) {
+
+	var code, name string
+
+	err := cookies.conn.QueryRow(cookies.ctx, "select code, name from coins where code=$1 and currency=$2", coinCode, currency).Scan(&code, &name)
+	if err != nil {
+		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
+		return views.Coin{}, err
+	}
+
+	return views.Coin{Code: code, Name: name}, err
+}
+
+func (cookies *Cookies) GetPriceIn(coinCode, currency string) (views.Price, error) {
+
+	var price float64
+
+	err := cookies.conn.QueryRow(cookies.ctx, "select price from coins where code=$1 and currency=$2", coinCode, currency).Scan(&price)
+	if err != nil {
+		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
+		return views.Price{}, err
+	}
+	if price < 0 {
+		fmt.Println("Price doesn't exists in database, fetching from API...", pgx.ErrNoRows)
+		return views.Price{}, pgx.ErrNoRows
+	}
+
+	return views.Price{Coin: coinCode, Currency: currency, Price: price}, err
+}
+
+func (cookies *Cookies) GetPrice(coinCode string) (views.PriceResponse, error) {
+	currencies := strings.Split(os.Getenv("CURRENCY_LIST"), "-")
+	response := make(map[string]float64)
+	var price float64
+
+	for _, currency := range currencies {
+		err := cookies.conn.QueryRow(cookies.ctx, "select price from coins where code=$1 and currency=$2", coinCode, currency).Scan(&price)
+		if err != nil {
+			fmt.Println("Coin doesn't exists in database, fetching from API...", err)
+			return views.PriceResponse{}, err
+		}
+		if price < 0 {
+			fmt.Println("Price doesn't exists in database, fetching from API...", pgx.ErrNoRows)
+			return views.PriceResponse{Data: views.PriceResponseData{coinCode: {"": -1.0}}}, pgx.ErrNoRows
+		}
+		response[currency] = price
+	}
+
+	return views.PriceResponse{Data: views.PriceResponseData{coinCode: response}}, nil
+}
+
+func (cookies *Cookies) GetExpiry(coinCode, currency string) (time.Time, error) {
+	if currency == "" {
+		currency = os.Getenv("CURRENCY")
+	}
+
+	var expiry time.Time
+
+	err := cookies.conn.QueryRow(cookies.ctx, "select updated from coins where code=$1 and currency=$2", coinCode, currency).Scan(&expiry)
+	if err != nil {
+		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
+		return time.Now(), err
+	}
+
+	EXPIRY, err := time.ParseDuration(os.Getenv("EXPIRY"))
+	if err != nil {
+		fmt.Println("Invalid time format in environment variable 'EXPIRY'", err)
+		return time.Now(), err
+	}
+
+	expiry = expiry.Add(EXPIRY)
+	return expiry, err
+}
+
+func (cookies *Cookies) SetCoin(coin views.Coin) error {
+	EXPIRY, err := time.ParseDuration(os.Getenv("EXPIRY"))
+	if err != nil {
+		fmt.Println("Invalid time format in environment variable 'EXPIRY'", err)
+		return time.Now(), err
+	}
+
+	currencies := strings.Split(os.Getenv("CURRENCY_LIST"), "-")
+	for _, currency := range currencies {
+		coinObj, err := json.Marshal(coin)
+		cookies.ctx.SetCookie(coin.Code, string(coinObj), time.Now().Add(EXPIRY))
+		_, err = cookies.conn.Exec(cookies.ctx, "insert into coins (code, name, price, currency, updated) values ($1, $2, $3, $4, $5)", coin.Code, coin.Name, -1.0, currency, time.Now())
+		if err != nil {
+			fmt.Println("Error writing to database...", err)
+			return err
+		}
+	}
+	return nil 
+}
+
+func (cookies *Cookies) SetPrice(price views.Price) error {
+	_, err := cookies.conn.Exec(cookies.ctx, "update coins set price=$3, updated=$4 where currency=$2 and code=$1", price.Coin, price.Currency, price.Price, time.Now())
+	if err != nil {
+		fmt.Println("Error writing to database...", err)
+		return err
+	}
+	return err
+}
+
+func (cookies *Cookies) Close() {
+	_, err := cookies.conn.Exec(cookies.ctx, "drop table coins")
+	if err != nil {
+		fmt.Println("Error dropping schemas", err)
+	}
+	defer cookies.conn.Close()
+}
+
+func (cookies Cookies) GetCoinInCurrency(coinCode, currency string) (views.Coin, error) {
+}
+func (cookies Cookies) GetPriceIn(coinCode, currency string) (views.Price, error) {
+}

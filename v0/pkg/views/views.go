@@ -12,3 +12,9 @@ type Price struct {
 	Currency string  `json:"currency"`
 	Price    float64 `json:"price"`
 }
+
+type PriceResponseData map[string]map[string]float64
+
+type PriceResponse struct {
+	Data map[string]map[string]float64 `json:"data"`
+}

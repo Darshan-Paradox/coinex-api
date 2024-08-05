@@ -1,10 +1,11 @@
 package db
 
 import (
-	"context"
-	"fmt"
 	"os"
+	"fmt"
 	"time"
+	"strings"
+	"context"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,7 +22,7 @@ type DB struct {
 	ctx  context.Context
 }
 
-func (db *DB) InitDB(ctx context.Context, url string) {
+func (db *DB) Init(ctx context.Context, url string) {
 	var err error
 
 	db.ctx = ctx
@@ -31,7 +32,7 @@ func (db *DB) InitDB(ctx context.Context, url string) {
 		return
 	}
 
-	_, err = db.conn.Exec(db.ctx, "create table coins ( code text primary key, name text, price real, currency text, updated timestamptz not null )")
+	_, err = db.conn.Exec(db.ctx, "create table coins ( code text, name text, price real, currency text, updated timestamptz not null )")
 	if err != nil {
 		fmt.Println("Error creating schemas", err)
 		return
@@ -60,9 +61,18 @@ func (db DB) GetAllCoin() (views.CoinList, error) {
 
 func (db DB) GetCoin(coinCode string) (views.Coin, error) {
 
+	expiry, err := db.GetExpiry(coinCode, "")
+	if err != nil {
+		fmt.Println("Error fetching expiry", err)
+		return views.Coin{}, err
+	}
+	if time.Now().After(expiry) {
+		return views.Coin{}, pgx.ErrNoRows
+	}
+
 	var code, name string
 
-	err := db.conn.QueryRow(db.ctx, "select code, name from coins where code=$1", coinCode).Scan(&code, &name)
+	err = db.conn.QueryRow(db.ctx, "select code, name from coins where code=$1", coinCode).Scan(&code, &name)
 	if err != nil {
 		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
 		return views.Coin{}, err
@@ -71,11 +81,33 @@ func (db DB) GetCoin(coinCode string) (views.Coin, error) {
 	return views.Coin{Code: code, Name: name}, err
 }
 
-func (db DB) GetPrice(coinCode, currency string) (views.Price, error) {
+func (db DB) GetCoinInCurrency(coinCode, currency string) (views.Coin, error) {
+
+	var code, name string
+
+	err := db.conn.QueryRow(db.ctx, "select code, name from coins where code=$1 and currency=$2", coinCode, currency).Scan(&code, &name)
+	if err != nil {
+		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
+		return views.Coin{}, err
+	}
+
+	return views.Coin{Code: code, Name: name}, err
+}
+
+func (db DB) GetPriceIn(coinCode, currency string) (views.Price, error) {
+
+	expiry, err := db.GetExpiry(coinCode, "")
+	if err != nil {
+		fmt.Println("Error fetching expiry", err)
+		return views.Price{}, err
+	}
+	if time.Now().After(expiry) {
+		return views.Price{}, pgx.ErrNoRows
+	}
 
 	var price float64
 
-	err := db.conn.QueryRow(db.ctx, "select price from coins where code=$1 and currency=$2", coinCode, currency).Scan(&price)
+	err = db.conn.QueryRow(db.ctx, "select price from coins where code=$1 and currency=$2", coinCode, currency).Scan(&price)
 	if err != nil {
 		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
 		return views.Price{}, err
@@ -88,10 +120,43 @@ func (db DB) GetPrice(coinCode, currency string) (views.Price, error) {
 	return views.Price{Coin: coinCode, Currency: currency, Price: price}, err
 }
 
-func (db DB) GetExpiry(coinCode string) (time.Time, error) {
+func (db DB) GetPrice(coinCode string) (views.PriceResponse, error) {
+	expiry, err := db.GetExpiry(coinCode, "")
+	if err != nil {
+		fmt.Println("Error fetching expiry", err)
+		return views.PriceResponse{}, err
+	}
+	if time.Now().After(expiry) {
+		return views.PriceResponse{}, pgx.ErrNoRows
+	}
+	currencies := strings.Split(os.Getenv("CURRENCY_LIST"), "-")
+	response := make(map[string]float64)
+	var price float64
+
+	for _, currency := range currencies {
+		err := db.conn.QueryRow(db.ctx, "select price from coins where code=$1 and currency=$2", coinCode, currency).Scan(&price)
+		if err != nil {
+			fmt.Println("Coin doesn't exists in database, fetching from API...", err)
+			return views.PriceResponse{}, err
+		}
+		if price < 0 {
+			fmt.Println("Price doesn't exists in database, fetching from API...", pgx.ErrNoRows)
+			return views.PriceResponse{Data: views.PriceResponseData{coinCode: {"": -1.0}}}, pgx.ErrNoRows
+		}
+		response[currency] = price
+	}
+
+	return views.PriceResponse{Data: views.PriceResponseData{coinCode: response}}, nil
+}
+
+func (db DB) GetExpiry(coinCode, currency string) (time.Time, error) {
+	if currency == "" {
+		currency = os.Getenv("CURRENCY")
+	}
+
 	var expiry time.Time
 
-	err := db.conn.QueryRow(db.ctx, "select updated from coins where code=$1", coinCode).Scan(&expiry)
+	err := db.conn.QueryRow(db.ctx, "select updated from coins where code=$1 and currency=$2", coinCode, currency).Scan(&expiry)
 	if err != nil {
 		fmt.Println("Coin doesn't exists in database, fetching from API...", err)
 		return time.Now(), err
@@ -108,12 +173,15 @@ func (db DB) GetExpiry(coinCode string) (time.Time, error) {
 }
 
 func (db DB) SetCoin(coin views.Coin) error {
-	_, err := db.conn.Exec(db.ctx, "insert into coins (code, name, price, currency, updated) values ($1, $2, $3, $4, $5)", coin.Code, coin.Name, -1.0, os.Getenv("CURRENCY"), time.Now())
-	if err != nil {
-		fmt.Println("Error writing to database...", err)
-		return err
+	currencies := strings.Split(os.Getenv("CURRENCY_LIST"), "-")
+	for _, currency := range currencies {
+		_, err := db.conn.Exec(db.ctx, "insert into coins (code, name, price, currency, updated) values ($1, $2, $3, $4, $5)", coin.Code, coin.Name, -1.0, currency, time.Now())
+		if err != nil {
+			fmt.Println("Error writing to database...", err)
+			return err
+		}
 	}
-	return err
+	return nil 
 }
 
 func (db DB) SetPrice(price views.Price) error {
@@ -125,7 +193,7 @@ func (db DB) SetPrice(price views.Price) error {
 	return err
 }
 
-func (db *DB) Close() {
+func (db DB) Close() {
 	_, err := db.conn.Exec(db.ctx, "drop table coins")
 	if err != nil {
 		fmt.Println("Error dropping schemas", err)

@@ -20,6 +20,7 @@ func (r *Router) Init() {
 	r.router.Use(logger.LoggerInst.ResponseHandler)
 
 	r.router.GET("/coins", handlers.GetAllCoins)
+	r.router.GET("/price/:coin", handlers.GetPrice)
 	r.router.GET("/price/:coin/:currency", handlers.GetCoinPrice)
 	r.router.GET("/:coin", handlers.GetCoin)
 }
