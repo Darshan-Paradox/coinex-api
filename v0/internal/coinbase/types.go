@@ -1,4 +1,4 @@
-package crypto
+package coinbase
 
 type InvalidStructure struct{}
 
