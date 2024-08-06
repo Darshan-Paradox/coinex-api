@@ -26,19 +26,15 @@ type ICache interface {
 
 // Factory Generator
 type Cache struct {
-	ctx   context.Context
 	Store ICache
 }
 
 func (cache *Cache) Init(ctx context.Context) {
-	if os.Getenv("CACHE") == "DB" {
-		cache.ctx = ctx
-
-		db.Repository.Init(cache.ctx, os.Getenv("DATABASE_URL"))
-
+	switch cacheEnv := os.Getenv("CACHE"); cacheEnv {
+	case "DB":
+		db.Repository.Init(ctx, os.Getenv("DATABASE_URL"))
 		cache.Store = &db.Repository
-		return
+	default:
+		cache.Store = &cookies.Repository
 	}
-
-	cache.Store = &cookies.Repository
 }

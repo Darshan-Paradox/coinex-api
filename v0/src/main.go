@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"coinex-api/v0/internal/cache"
+	"coinex-api/v0/cache"
 	"coinex-api/v0/logger"
 	"coinex-api/v0/pkg/routes"
 )
