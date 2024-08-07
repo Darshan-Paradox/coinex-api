@@ -18,8 +18,8 @@ func main() {
 	log.Init()
 	defer log.Close()
 
-	repo.Init(context.Background())
-	defer repo.Store.Close()
+	repo = cache.Init(os.Getenv("CACHE_IMPLEMENTATION"), os.Getenv("DATABASE_URL"), context.Background())
+	defer cache.Close(repo)
 
 	router.Init()
 	router.Run(os.Getenv("PORT"))

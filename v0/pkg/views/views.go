@@ -18,3 +18,19 @@ type PriceResponseData map[string]map[string]float64
 type PriceResponse struct {
 	Data map[string]map[string]float64 `json:"data"`
 }
+
+type ICache interface {
+	GetAllCoin() (CoinList, error)
+	GetPrice(coinCode string) (PriceResponse, error)
+	GetCoinInCurrency(coinCode, currency string) (Coin, error)
+	GetPriceInCurrency(coinCode, currency string) (Price, error)
+
+	SetCoin(coin Coin) error
+	SetPrice(price Price) error
+
+	Close()
+}
+
+type Cache struct {
+	Store ICache
+}

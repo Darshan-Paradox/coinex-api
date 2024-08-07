@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"os"
 
@@ -20,17 +20,17 @@ type Logger struct {
 
 var LoggerInst Logger
 
-func (log *Logger) Init() {
+func (logger *Logger) Init() {
 
 	var err error
-	log.Request, err = os.Create(os.Getenv("REQUEST_LOG") + ".request.log")
+	logger.Request, err = os.Create(os.Getenv("REQUEST_LOG") + ".request.log")
 	if err != nil {
-		fmt.Println("Error creating log file for requests", err)
+		log.Println("Error creating log file for requests", err)
 	}
 
-	log.Response, err = os.Create(os.Getenv("RESPONSE_LOG") + ".response.log")
+	logger.Response, err = os.Create(os.Getenv("RESPONSE_LOG") + ".response.log")
 	if err != nil {
-		fmt.Println("Error creating log file for response", err)
+		log.Println("Error creating log file for response", err)
 	}
 
 	configRequest := sloggin.Config{
@@ -47,14 +47,14 @@ func (log *Logger) Init() {
 		WithResponseHeader: true,
 	}
 
-	handlerRequest := slog.New(slog.NewJSONHandler(io.MultiWriter(log.Request), nil))
-	handlerResponse := slog.New(slog.NewJSONHandler(io.MultiWriter(log.Response), nil))
+	handlerRequest := slog.New(slog.NewJSONHandler(io.MultiWriter(logger.Request), nil))
+	handlerResponse := slog.New(slog.NewJSONHandler(io.MultiWriter(logger.Response), nil))
 
-	log.RequestHandler = sloggin.NewWithConfig(handlerRequest, configRequest)
-	log.ResponseHandler = sloggin.NewWithConfig(handlerResponse, configResponse)
+	logger.RequestHandler = sloggin.NewWithConfig(handlerRequest, configRequest)
+	logger.ResponseHandler = sloggin.NewWithConfig(handlerResponse, configResponse)
 }
 
-func (log *Logger) Close() {
-	defer log.Request.Close()
-	defer log.Response.Close()
+func (logger *Logger) Close() {
+	defer logger.Request.Close()
+	defer logger.Response.Close()
 }

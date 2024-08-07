@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -18,7 +18,7 @@ func GetAllCoins(c *gin.Context) {
 	cookies.Repository.Init(c)
 	coinList, err := services.GetAllCoins()
 	if err != nil {
-		fmt.Println("ERROR:: Unable to fetch data...", err)
+		log.Println("ERROR:: Unable to fetch data...", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -29,7 +29,7 @@ func GetCoin(c *gin.Context) {
 	cookies.Repository.Init(c)
 	coinCode := strings.ToUpper(c.Param("coin"))
 
-	coin, err := cache.Repository.Store.GetCoin(coinCode)
+	coin, err := cache.Repository.Store.GetCoinInCurrency(coinCode, "")
 	if err == nil {
 		c.JSON(http.StatusOK, coin)
 		return
@@ -37,7 +37,7 @@ func GetCoin(c *gin.Context) {
 
 	coinList, err := services.GetAllCoins()
 	if err != nil {
-		fmt.Println("ERROR:: Unable to fetch data...", err)
+		log.Println("ERROR:: Unable to fetch data...", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -48,7 +48,7 @@ func GetCoin(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("ERROR:: Coin doesn't exist...")
+	log.Println("ERROR:: Coin doesn't exist...")
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Coin doesn't exists"})
 }
 
@@ -56,7 +56,7 @@ func GetCoinPrice(c *gin.Context) {
 	cookies.Repository.Init(c)
 	coinCode, currency := strings.ToUpper(c.Param("coin")), strings.ToUpper(c.Param("currency"))
 
-	price, err := cache.Repository.Store.GetPriceIn(coinCode, currency)
+	price, err := cache.Repository.Store.GetPriceInCurrency(coinCode, currency)
 	if err == nil {
 		c.JSON(http.StatusOK, price)
 		return
@@ -64,17 +64,17 @@ func GetCoinPrice(c *gin.Context) {
 
 	price, err = services.GetPrice(coinCode, currency)
 	if err != nil {
-		fmt.Println("ERROR:: Unable to fetch data...", err)
+		log.Println("ERROR:: Unable to fetch data...", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	_, err = cache.Repository.Store.GetCoin(price.Coin)
+	_, err = cache.Repository.Store.GetCoinInCurrency(price.Coin, "")
 
 	if err != nil {
 		coinList, err := services.GetAllCoins()
 		if err != nil {
-			fmt.Println("ERROR:: Unable to fetch data...", err)
+			log.Println("ERROR:: Unable to fetch data...", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 		cache.Repository.Store.SetCoin(coinList[coinCode])
@@ -100,7 +100,7 @@ func GetPrice(c *gin.Context) {
 	for _, currency := range currencies {
 		price, err := services.GetPrice(coinCode, currency)
 		if err != nil {
-			fmt.Println("ERROR:: Unable to fetch data...", err)
+			log.Println("ERROR:: Unable to fetch data...", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -110,7 +110,7 @@ func GetPrice(c *gin.Context) {
 		if err != nil {
 			coinList, err := services.GetAllCoins()
 			if err != nil {
-				fmt.Println("ERROR:: Unable to fetch data...", err)
+				log.Println("ERROR:: Unable to fetch data...", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			}
 			cache.Repository.Store.SetCoin(coinList[coinCode])
