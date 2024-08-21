@@ -10,7 +10,7 @@ import (
 
 var Repository views.Cache
 
-func Init(storeType, databaseURL string, ctx context.Context) *views.Cache {
+func Init(storeType, databaseURL string, ctx context.Context) views.Cache {
 	var cache views.Cache
 	switch storeType {
 	case "DB":
@@ -19,7 +19,7 @@ func Init(storeType, databaseURL string, ctx context.Context) *views.Cache {
 	default:
 		cache.Store = &cookies.Repository
 	}
-	return &cache
+	return cache
 }
 
 func Close(cache *views.Cache) {
