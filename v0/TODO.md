@@ -23,3 +23,16 @@ contains main function to run the server file
 
 ##cmd
 contains compiled binary
+
+- [ ] make factory for DB or Cookie caching
+
+    CookieCache struct {
+        c *gin.Context
+    }
+
+    DB struct {
+        conn *pgxpool.Pool
+        ctx *context.Context
+    }
+
+    create an interface will all the functions
